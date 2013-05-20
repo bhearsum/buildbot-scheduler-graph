@@ -17,7 +17,7 @@ def graph_objects(schedulers):
         # Connect Dependent Schedulers together
         if getattr(s, "upstream_name", None):
             print "  Adding Dependent Scheduler: %s" % s.upstream_name
-            scheduler_graph.add_edge(pydot.Edge(s['upstream_name'], scheduler_name))
+            scheduler_graph.add_edge(pydot.Edge(s.upstream_name, scheduler_name))
         # Connect AggregatingScheduler Builders together
         if getattr(s, "upstreamBuilders", None):
             print "  Adding Builders from an AggregatingScheduler:"
