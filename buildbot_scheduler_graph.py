@@ -102,7 +102,7 @@ def main():
     if args.triggerables:
         triggerables = json.load(open(args.triggerables))
     else:
-        triggerables = None
+        triggerables = {}
 
     if args.verbose:
         log.setLevel(logging.DEBUG)
