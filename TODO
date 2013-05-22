@@ -1,0 +1,3 @@
+* Make root-only graphs optional (other behaviour is all in one)
+* Make graph merging actually work
+* Add ChangeSources?
