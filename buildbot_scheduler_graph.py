@@ -78,6 +78,7 @@ def graph_objects(schedulers, triggerables={}):
     log.debug("Done merging")
     graphs = defaultdict(partial(pydot.Dot, graph_type='digraph'))
     for s in graph_info:
+        # XXX: Only graph root nodes once merging is fixed.
         if True:#graph_info[s]['root']:
             for node in graph_info[s]['nodes']:
                 graphs[s].add_node(pydot.Node(node))
