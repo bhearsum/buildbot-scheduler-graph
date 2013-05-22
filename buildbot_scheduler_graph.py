@@ -72,8 +72,7 @@ def graph_objects(schedulers, triggerables={}):
             del graph_info[s]
         return bool(merged)
 
-    while merge_schedulers():
-        n += 1
+    #merge_schedulers()
 
     log.debug("Done merging")
     graphs = defaultdict(partial(pydot.Dot, graph_type='digraph'))
