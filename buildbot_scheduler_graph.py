@@ -1,5 +1,5 @@
 from collections import defaultdict
-from functools import partial
+from copy import deepcopy
 from imp import load_source
 import json
 import logging
@@ -27,87 +27,70 @@ def parse_schedulers(schedulers, triggerables={}):
     for s in schedulers:
         # Some schedulers have the same name as their builders, so let's be sure
         # to avoid conflicts
-        log.debug("Creating graph for Scheduler: %s" % s.name)
-        graph = graph_info[s.name] = defaultdict(set)
-        graph['nodes'].add(s.name)
-        graph_info[s.name]['root'] = True
+        scheduler_name = "%s scheduler" % s.name
+        log.debug("Creating graph for Scheduler: %s" % scheduler_name)
+        graph = graph_info[scheduler_name] = defaultdict(set)
+        graph['nodes'].add(scheduler_name)
+        graph_info[scheduler_name]['root'] = True
         for builder in s.builderNames:
             log.debug("  Adding Builder: %s" % builder)
             graph['nodes'].add(builder)
-            graph['edges'].add((s.name, builder))
+            graph['edges'].add((scheduler_name, builder))
         if getattr(s, "trigger", None):
-            graph_info[s.name]['root'] = False
+            graph_info[scheduler_name]['root'] = False
             if s.name in triggerables:
                 log.debug("  Hooking up Triggerable Scheduler Builders")
             for builder in triggerables.get(s.name, []):
                 graph['nodes'].add(builder)
-                graph['edges'].add((builder, s.name))
+                graph['edges'].add((builder, scheduler_name))
         # Connect Dependent Schedulers together
         if getattr(s, "upstream_name", None):
             log.debug("  Adding Dependent Scheduler: %s" % s.upstream_name)
-            graph_info[s.name]['root'] = False
+            graph_info[scheduler_name]['root'] = False
             for upstream in schedulers:
                 if upstream.name == s.upstream_name:
                     for builder in upstream.builderNames:
                         graph['nodes'].add(builder)
-                        graph['edges'].add((builder, s.name))
+                        graph['edges'].add((builder, scheduler_name))
         # Connect AggregatingScheduler Builders together
         if getattr(s, "upstreamBuilders", None):
             log.debug("  Adding Builders from an AggregatingScheduler:")
-            graph_info[s.name]['root'] = False
+            graph_info[scheduler_name]['root'] = False
             for builder in s.upstreamBuilders:
                 log.debug("    %s" % builder)
                 graph['nodes'].add(builder)
-                graph['edges'].add((builder, s.name))
+                graph['edges'].add((builder, scheduler_name))
 
     return graph_info
-#
-#    # Each root Scheduler should have its own graph. Any schedulers
-#    # which are downstream of something else should be put in that graph.
-#    # To do this, we need to inspect the graph information we have and combine
-#    # any schedulers which are downstream of something into their upstream
-#    # graph.
-#    n = 1
-#    def merge_schedulers():
-#        merged = set()
-#        log.debug("Merge pass #%d" % n)
-#        for s in graph_info:
-#            for b in graph_info[s].get('nodes', []):
-#                for other_s in graph_info:
-#                    if s == other_s:
-#                        continue
-#                    if b in graph_info[other_s].get('nodes', []):
-#                        log.debug("Merging %s into %s" % (s, other_s))
-#                        graph_info[other_s]['nodes'].update(graph_info[s]['nodes'])
-#                        graph_info[other_s]['edges'].update(graph_info[s]['edges'])
-#                        merged.add(s)
-#        for s in merged:
-#            del graph_info[s]
-#        return bool(merged)
-#
-#    #merge_schedulers()
-#
-#
-#
-#    log.debug("Done merging")
-#    graphs = defaultdict(partial(pydot.Dot, graph_type='digraph'))
-#    for s in graph_info:
-#        if s in ('release-mozilla-beta-firefox_reset_schedulers scheduler', 'release-mozilla-beta-firefox_tag scheduler'):
-#            log.debug(s)
-#            log.debug(graph_info[s]['nodes'])
-#            log.debug(graph_info[s]['edges'])
-#        # XXX: Only graph root nodes once merging is fixed.
-#        if True:#graph_info[s]['root']:
-#            for node in graph_info[s]['nodes']:
-#                graphs[s].add_node(pydot.Node(node))
-#            for edge in graph_info[s]['edges']:
-#                graphs[s].add_edge(pydot.Edge(*edge))
-#
-#    return graphs
-#
+
+
+def merge_graph_info(graph_info):
+    # We're only going to be returning root Schedulers, but we need somewhere
+    # to do all of the merging in the meantime, including merging one non-root
+    # Scheduler into another.
+    new_graph_info = deepcopy(graph_info)
+    for s in graph_info:
+        # Root Schedulers never need to be merged
+        if graph_info[s]['root'] == True:
+            pass
+
+        # If the upstream side of any edge appears in another Scheduler's
+        # builders, we should merge this one into it.
+        for edge in graph_info[s]['edges']:
+            for other_s in graph_info:
+                # If we see ourselves, abort!
+                if s == other_s:
+                    continue
+                if edge[0] in graph_info[other_s]['nodes']:
+                    new_graph_info[other_s]['nodes'].update(graph_info[s]['nodes'])
+                    new_graph_info[other_s]['edges'].update(graph_info[s]['edges'])
+
+    return {s:info for s,info in new_graph_info.iteritems() if info['root']}
+
 
 def main():
     from argparse import ArgumentParser
+    import pydot
 
     parser = ArgumentParser()
     parser.add_argument('master_cfg', nargs=1)
@@ -136,8 +119,15 @@ def main():
         sys.path.insert(0, "")
         cfg = load_source('cfg', master_cfg)
 
-        for name, graph in graph_objects(cfg.c['schedulers'], triggerables=triggerables).iteritems():
+        graph_info = parse_schedulers(cfg.c['schedulers'], triggerables=triggerables)
+        for name, graph_info in merge_graph_info(graph_info).iteritems():
+            graph = pydot.Dot(graph_type='digraph')
+            for node in graph_info['nodes']:
+                graph.add_node(pydot.Node(node))
+            for edge in graph_info['edges']:
+                graph.add_edge(pydot.Edge(*edge))
             graph.write_png(os.path.join(output_dir, "%s.png" % name))
+
     finally:
         os.chdir(curdir)
 
