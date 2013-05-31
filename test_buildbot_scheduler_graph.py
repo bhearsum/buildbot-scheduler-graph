@@ -212,19 +212,54 @@ class TestMergeGraphInfo(unittest.TestCase):
                 'edges': set((('foo', 'foobuilder'), ('basebuilder', 'foo'))),
                 'root': False,
             },
-            'merged': {
-                'nodes': set(('merged', 'mergedbuilder', 'foobuilder')),
-                'edges': set((('merged', 'mergedbuilder'), ('foobuilder', 'merged'))),
+            'bar': {
+                'nodes': set(('bar', 'barbuilder', 'foobuilder')),
+                'edges': set((('bar', 'barbuilder'), ('foobuilder', 'bar'))),
                 'root': False,
             }
         }
         expected = {
             'base': {
                 'nodes': set(('base', 'basebuilder', 'foo', 'foobuilder',
-                              'merged', 'mergedbuilder')),
+                              'bar', 'barbuilder')),
                 'edges': set((('base', 'basebuilder'), ('foo', 'foobuilder'), ('basebuilder', 'foo'),
-                              ('merged', 'mergedbuilder'),
-                              ('foobuilder', 'merged'))),
+                              ('bar', 'barbuilder'),
+                              ('foobuilder', 'bar'))),
+                'root': True,
+            }
+        }
+        self.assertEquals(merge_graph_info(graph_info), expected)
+
+    def testDiamondMerge(self):
+        graph_info = {
+            'base': {
+                'nodes': set(('base', 'basebuilder')),
+                'edges': set((('base', 'basebuilder'),)),
+                'root': True,
+            },
+            'foo': {
+                'nodes': set(('foo', 'foobuilder', 'basebuilder')),
+                'edges': set((('foo', 'foobuilder'), ('basebuilder', 'foo'))),
+                'root': False,
+            },
+            'bar': {
+                'nodes': set(('bar', 'barbuilder', 'basebuilder')),
+                'edges': set((('bar', 'barbuilder'), ('basebuilder', 'bar'))),
+                'root': False,
+            },
+            'merged': {
+                'nodes': set(('merged', 'mergedbuilder', 'foobuilder', 'barbuilder')),
+                'edges': set((('merged', 'mergedbuilder'), ('foobuilder', 'merged'), ('barbuilder', 'merged'))),
+                'root': False,
+            }
+        }
+        expected = {
+            'base': {
+                'nodes': set(('base', 'basebuilder', 'foo', 'foobuilder',
+                              'bar', 'barbuilder', 'merged', 'mergedbuilder')),
+                'edges': set((('base', 'basebuilder'), ('foo', 'foobuilder'), ('basebuilder', 'foo'),
+                              ('bar', 'barbuilder'), ('basebuilder', 'bar'), ('merged', 'mergedbuilder'),
+                              ('foobuilder', 'merged'), ('barbuilder', 'merged'))),
                 'root': True,
             }
         }

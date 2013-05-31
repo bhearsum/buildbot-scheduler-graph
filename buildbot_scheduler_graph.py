@@ -74,16 +74,22 @@ def merge_graph_info(graph_info):
         if graph_info[s]['root'] == True:
             pass
 
-        # If the upstream side of any edge appears in another Scheduler's
-        # builders, we should merge this one into it.
-        for edge in graph_info[s]['edges']:
-            for other_s in graph_info:
-                # If we see ourselves, abort!
-                if s == other_s:
-                    continue
-                if edge[0] in graph_info[other_s]['nodes']:
-                    new_graph_info[other_s]['nodes'].update(graph_info[s]['nodes'])
-                    new_graph_info[other_s]['edges'].update(graph_info[s]['edges'])
+        log.debug("Evaluating %s for merging" % s)
+        # Any other Schedulers need to find the Scheduler that is upstream
+        # of them.
+        for other_s in graph_info:
+            # If we see ourselves, abort!
+            if s == other_s:
+                continue
+            log.debug("  Looking at nodes from %s: %s" % (other_s, new_graph_info[other_s]))
+            # If the upstream side of any edge appears in another Scheduler's
+            # builders, we should merge this one into it.
+            for edge in graph_info[s]['edges']:
+                if edge[0] in new_graph_info[other_s]['nodes']:
+                    log.debug("    Found node %s, merging" % edge[0])
+                    new_graph_info[other_s]['nodes'].update(new_graph_info[s]['nodes'])
+                    new_graph_info[other_s]['edges'].update(new_graph_info[s]['edges'])
+                    break
 
     return {s:info for s,info in new_graph_info.iteritems() if info['root']}
 
