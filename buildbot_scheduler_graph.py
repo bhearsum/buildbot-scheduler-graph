@@ -97,6 +97,9 @@ def merge_graph_info(graph_info):
     return {s:info for s,info in new_graph_info.iteritems() if info["root"]}
 
 
+def replace_edges(edges):
+    return set([(left.replace(nodes[0], n), right.replace(nodes[0], n)) for left, right in edges[n]])
+
 def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
     merged_nodes = set()
     merged_edges = set()
@@ -108,6 +111,8 @@ def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
         if m:
             basename = m.groupdict()["basename"]
             node_groups[basename].append(n)
+        else:
+            merged_nodes.add(n)
 
     for e in edges:
         node_edges[e[0]].append(e)
@@ -126,22 +131,28 @@ def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
         # the same edges.
         required_edges = node_edges[nodes[0]]
         for n in nodes[1:]:
+            log.debug("Comparing %s to %s" % (nodes[0], n))
             if len(node_edges[n]) != len(required_edges):
+                log.debug("Number of edges differs between, can't merge")
                 mergeable = False
                 break
             # Replace the current node with the first node in all of the edges, for purposes of easy comparison
-            replaced_edges = set([(left.replace(nodes[0], n), right.replace(nodes[0], n)) for left, right in node_edges[n]])
+            replaced_edges = [(left.replace(n, nodes[0]), right.replace(n, nodes[0])) for left, right in node_edges[n]]
             if required_edges != replaced_edges:
+                log.debug("Edge content differs (%s vs %s), can't merge" % (required_edges, replaced_edges))
                 mergeable = False
                 break
 
         if mergeable:
+            log.debug("Group is mergeable!")
             merged_nodes.add(basename)
             for n in nodes:
                 for e in node_edges[n]:
                     merged_edges.add((e[0].replace(n, basename), e[1].replace(n, basename)))
         else:
             merged_nodes.update(nodes)
+
+    return merged_nodes, merged_edges
 
 
 def main():

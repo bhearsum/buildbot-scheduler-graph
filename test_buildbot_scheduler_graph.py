@@ -271,7 +271,7 @@ class TestMergeNodes(unittest.TestCase):
     def testMergeMultipleDownstream(self):
         nodes = {"base", "foo 1/2", "foo 2/2"}
         edges = {("base", "foo 1/2"), ("base", "foo 2/2")}
-        expected = {"base", "foo"}
+        expected = ({"base", "foo"}, {("base", "foo"),})
         self.assertEquals(merge_nodes(nodes, edges), expected)
 
     def testMergeMultipleUpstream(self):
