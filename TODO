@@ -1,4 +1,6 @@
-* Make root-only graphs optional (other behaviour is all in one)
+* Make root-only graphs optional (alternative behaviour is all in one)
 * Make graph merging actually work
 * Add ChangeSources?
 * Map sendchange -> Schedulers (maybe need another dict like triggerables?)
+* Implement builder merging (eg, "foo 1/2" and "foo 1/2" become "foo")
+** Probably needs to be overridable with a custom method.
