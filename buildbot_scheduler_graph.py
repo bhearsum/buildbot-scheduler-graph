@@ -97,13 +97,12 @@ def merge_graph_info(graph_info):
     return {s:info for s,info in new_graph_info.iteritems() if info["root"]}
 
 
-def replace_edges(edges):
-    return set([(left.replace(nodes[0], n), right.replace(nodes[0], n)) for left, right in edges[n]])
-
 def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
+    # A place to store the new sets of nodes and edges.
     merged_nodes = set()
     merged_edges = set()
     r = re.compile(merge_pattern)
+    # Organize the nodes and edges to make them easier to work with
     node_groups = defaultdict(list)
     node_edges = defaultdict(list)
     for n in nodes:
@@ -113,11 +112,11 @@ def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
             node_groups[basename].append(n)
         else:
             merged_nodes.add(n)
-
     for e in edges:
         node_edges[e[0]].append(e)
         node_edges[e[1]].append(e)
 
+    # Do the merging, group by group.
     for basename, nodes in node_groups.iteritems():
         # Can't merge a group with only one item!
         if len(nodes) < 2:
@@ -125,7 +124,6 @@ def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
             continue
 
         mergeable = True
-
         log.debug("Trying to merge node group '%s'" % basename)
         # Nodes can only be merged together if all nodes in the group have
         # the same edges.
@@ -143,14 +141,19 @@ def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
                 mergeable = False
                 break
 
-        if mergeable:
-            log.debug("Group is mergeable!")
-            merged_nodes.add(basename)
-            for n in nodes:
-                for e in node_edges[n]:
-                    merged_edges.add((e[0].replace(n, basename), e[1].replace(n, basename)))
-        else:
-            merged_nodes.update(nodes)
+    # If the group is mergeable we need to add the basename to the list of
+    # nodes, and add the deduplicated edges with the new node name.
+    if mergeable:
+        log.debug("Group is mergeable!")
+        merged_nodes.add(basename)
+        for n in nodes:
+            for e in node_edges[n]:
+                merged_edges.add((e[0].replace(n, basename), e[1].replace(n, basename)))
+    # If the group isn't mergeable, just copy the original group data in.
+    else:
+        merged_nodes.update(nodes)
+        for n in nodes:
+            merged_edges.update(node_edges[n])
 
     return merged_nodes, merged_edges
 

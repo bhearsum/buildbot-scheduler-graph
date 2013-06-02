@@ -275,13 +275,24 @@ class TestMergeNodes(unittest.TestCase):
         self.assertEquals(merge_nodes(nodes, edges), expected)
 
     def testMergeMultipleUpstream(self):
-        pass
-
-    def testUnmergeableUpstreams(self):
-        pass
+        nodes = {"base 1/2", "base 2/2", "foo"}
+        edges = {("base 1/2", "foo"), ("base 2/2", "foo")}
+        expected = ({"base", "foo"}, {("base", "foo"),})
+        self.assertEquals(merge_nodes(nodes, edges), expected)
 
     def testUnmergeableDownstreams(self):
-        pass
+        nodes = {"base", "foo 1/2", "foo 2/2"}
+        edges = {("base", "foo 1/2")}
+        self.assertEquals(merge_nodes(nodes, edges), (nodes, edges))
+
+    def testUnmergeableUpstreams(self):
+        nodes = {"base 1/2", "base 2/2", "foo"}
+        edges = {("base 1/2", "base 2/2"), ("base 2/2", "foo")}
+        self.assertEquals(merge_nodes(nodes, edges), (nodes, edges))
 
     def testCustomMergePattern(self):
-        pass
+        p = "(?P<basename>.*) \d+$"
+        nodes = {"base", "foo 1", "foo 2", "foo 3"}
+        edges = {("base", "foo 1"), ("base", "foo 2"), ("base", "foo 3")}
+        expected = ({"base", "foo"}, {("base", "foo")})
+        self.assertEquals(merge_nodes(nodes, edges, p), expected)
