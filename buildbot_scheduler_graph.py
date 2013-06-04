@@ -58,7 +58,7 @@ def parse_schedulers(schedulers, triggerables={}):
                         graph["edges"].add((builder, scheduler_name))
         # Connect AggregatingScheduler Builders together
         if getattr(s, "upstreamBuilders", None):
-            log.debug("%s: Adding Builders from Aggregating Scheduler %s", scheduler_name, s.upstream_name)
+            log.debug("%s: Adding Upstream Builders from Aggregating Scheduler", scheduler_name)
             graph_info[scheduler_name]["root"] = False
             for builder in s.upstreamBuilders:
                 log.info("%s: Adding Builder %s", scheduler_name, builder)
@@ -138,8 +138,9 @@ def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
                 break
             # Replace the current node with the first node in all of the edges, for purposes of easy comparison
             replaced_edges = [(left.replace(n, nodes[0]), right.replace(n, nodes[0])) for left, right in node_edges[n]]
-            if required_edges != replaced_edges:
+            if set(required_edges) != set(replaced_edges):
                 log.info("%s: Edge content is different than %s", basename, n)
+                log.debug("%s: %s vs %s", basename, required_edges, replaced_edges)
                 mergeable = False
                 break
 
@@ -150,12 +151,15 @@ def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
             merged_nodes.add(basename)
             for n in nodes:
                 for e in node_edges[n]:
-                    merged_edges.add((e[0].replace(n, basename), e[1].replace(n, basename)))
+                    newedge = (e[0].replace(n, basename), e[1].replace(n, basename))
+                    log.debug("%s: Adding edge %s", basename, newedge)
+                    merged_edges.add(newedge)
         # If the group isn't mergeable, just copy the original group data in.
         else:
             log.info("%s: Unmergeable", basename)
             merged_nodes.update(nodes)
             for n in nodes:
+                log.debug("%s: Adding edges %s" % (basename, node_edges[n]))
                 merged_edges.update(node_edges[n])
 
     return merged_nodes, merged_edges
