@@ -4,3 +4,4 @@
 * Map sendchange -> Schedulers (maybe need another dict like triggerables?)
 * Implement builder merging (eg, "foo 1/2" and "foo 1/2" become "foo")
 ** Probably needs to be overridable with a custom method.
+* Make sure it works with Python 3

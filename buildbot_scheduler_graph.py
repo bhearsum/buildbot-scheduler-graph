@@ -13,7 +13,7 @@ __version__ = "1.0"
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
 
-chunked_builder_pattern = "(?P<basename>.*) \d+/\d+$"
+chunked_builder_pattern = "(?P<basename>.*)[-_ ]\d+/\d+$"
 
 def parse_schedulers(schedulers, triggerables={}):
     """Parses Scheduler data into a dict whose keys are the name of
@@ -31,36 +31,37 @@ def parse_schedulers(schedulers, triggerables={}):
         # Some schedulers have the same name as their builders, so let"s be sure
         # to avoid conflicts
         scheduler_name = "%s scheduler" % s.name
-        log.debug("Creating graph for Scheduler: %s" % scheduler_name)
+        log.info("%s: Creating graph", scheduler_name)
         graph = graph_info[scheduler_name] = defaultdict(set)
         graph["nodes"].add(scheduler_name)
         graph_info[scheduler_name]["root"] = True
         for builder in s.builderNames:
-            log.debug("  Adding Builder: %s" % builder)
+            log.info("%s: Adding Builder %s", scheduler_name, builder)
             graph["nodes"].add(builder)
             graph["edges"].add((scheduler_name, builder))
         if getattr(s, "trigger", None):
+            log.debug("%s: Looking for Triggerable Builders", scheduler_name)
             graph_info[scheduler_name]["root"] = False
-            if s.name in triggerables:
-                log.debug("  Hooking up Triggerable Scheduler Builders")
             for builder in triggerables.get(s.name, []):
+                log.info("%s: Adding Builder %s", scheduler_name, builder)
                 graph["nodes"].add(builder)
                 graph["edges"].add((builder, scheduler_name))
         # Connect Dependent Schedulers together
         if getattr(s, "upstream_name", None):
-            log.debug("  Adding Dependent Scheduler: %s" % s.upstream_name)
+            log.debug("%s: Connecting to Dependent Scheduler %s", scheduler_name, s.upstream_name)
             graph_info[scheduler_name]["root"] = False
             for upstream in schedulers:
                 if upstream.name == s.upstream_name:
                     for builder in upstream.builderNames:
+                        log.info("%s: Adding Builder %s", scheduler_name, builder)
                         graph["nodes"].add(builder)
                         graph["edges"].add((builder, scheduler_name))
         # Connect AggregatingScheduler Builders together
         if getattr(s, "upstreamBuilders", None):
-            log.debug("  Adding Builders from an AggregatingScheduler:")
+            log.debug("%s: Adding Builders from Aggregating Scheduler %s", scheduler_name, s.upstream_name)
             graph_info[scheduler_name]["root"] = False
             for builder in s.upstreamBuilders:
-                log.debug("    %s" % builder)
+                log.info("%s: Adding Builder %s", scheduler_name, builder)
                 graph["nodes"].add(builder)
                 graph["edges"].add((builder, scheduler_name))
 
@@ -77,22 +78,24 @@ def merge_graph_info(graph_info):
         if graph_info[s]["root"] == True:
             pass
 
-        log.debug("Evaluating %s for merging" % s)
+        log.info("%s: Evaluating for graph merging", s)
         # Any other Schedulers need to find the Scheduler that is upstream
         # of them.
         for other_s in graph_info:
             # If we see ourselves, abort!
             if s == other_s:
                 continue
-            log.debug("  Looking at nodes from %s: %s" % (other_s, new_graph_info[other_s]))
+            log.debug("%s: Looking at nodes from %s", s, other_s)
             # If the upstream side of any edge appears in another Scheduler"s
             # builders, we should merge this one into it.
             for edge in graph_info[s]["edges"]:
                 if edge[0] in new_graph_info[other_s]["nodes"]:
-                    log.debug("    Found node %s, merging" % edge[0])
+                    log.info("%s: Found matching node in %s, merging", s, other_s)
                     new_graph_info[other_s]["nodes"].update(new_graph_info[s]["nodes"])
                     new_graph_info[other_s]["edges"].update(new_graph_info[s]["edges"])
                     break
+            else:
+                log.debug("%s: No matching nodes, not merging", s)
 
     return {s:info for s,info in new_graph_info.iteritems() if info["root"]}
 
@@ -124,36 +127,36 @@ def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
             continue
 
         mergeable = True
-        log.debug("Trying to merge node group '%s'" % basename)
+        log.info("%s: Trying to merge node group", basename)
         # Nodes can only be merged together if all nodes in the group have
         # the same edges.
         required_edges = node_edges[nodes[0]]
         for n in nodes[1:]:
-            log.debug("Comparing %s to %s" % (nodes[0], n))
             if len(node_edges[n]) != len(required_edges):
-                log.debug("Number of edges differs between, can't merge")
+                log.info("%s: Number of edges is different than %s", basename, n)
                 mergeable = False
                 break
             # Replace the current node with the first node in all of the edges, for purposes of easy comparison
             replaced_edges = [(left.replace(n, nodes[0]), right.replace(n, nodes[0])) for left, right in node_edges[n]]
             if required_edges != replaced_edges:
-                log.debug("Edge content differs (%s vs %s), can't merge" % (required_edges, replaced_edges))
+                log.info("%s: Edge content is different than %s", basename, n)
                 mergeable = False
                 break
 
-    # If the group is mergeable we need to add the basename to the list of
-    # nodes, and add the deduplicated edges with the new node name.
-    if mergeable:
-        log.debug("Group is mergeable!")
-        merged_nodes.add(basename)
-        for n in nodes:
-            for e in node_edges[n]:
-                merged_edges.add((e[0].replace(n, basename), e[1].replace(n, basename)))
-    # If the group isn't mergeable, just copy the original group data in.
-    else:
-        merged_nodes.update(nodes)
-        for n in nodes:
-            merged_edges.update(node_edges[n])
+        # If the group is mergeable we need to add the basename to the list of
+        # nodes, and add the deduplicated edges with the new node name.
+        if mergeable:
+            log.info("%s: Mergable!", basename)
+            merged_nodes.add(basename)
+            for n in nodes:
+                for e in node_edges[n]:
+                    merged_edges.add((e[0].replace(n, basename), e[1].replace(n, basename)))
+        # If the group isn't mergeable, just copy the original group data in.
+        else:
+            log.info("%s: Unmergeable", basename)
+            merged_nodes.update(nodes)
+            for n in nodes:
+                merged_edges.update(node_edges[n])
 
     return merged_nodes, merged_edges
 
@@ -165,7 +168,7 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("master_cfg", nargs=1)
     parser.add_argument("output_dir", nargs=1)
-    parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", default=False)
+    parser.add_argument("-v", "--verbose", dest="verbose", action="count", default=0)
     parser.add_argument("-t", "--triggerables", dest="triggerables")
 
     args = parser.parse_args()
@@ -176,10 +179,10 @@ def main():
     else:
         triggerables = {}
 
-    if args.verbose:
-        log.setLevel(logging.DEBUG)
-    else:
+    if args.verbose == 1:
         log.setLevel(logging.INFO)
+    elif args.verbose >= 2:
+        log.setLevel(logging.DEBUG)
 
     curdir = os.path.abspath(os.curdir)
     try:
@@ -191,6 +194,7 @@ def main():
 
         graph_info = parse_schedulers(cfg.c["schedulers"], triggerables=triggerables)
         for name, graph_info in merge_graph_info(graph_info).iteritems():
+            graph_info["nodes"], graph_info["edges"] = merge_nodes(graph_info["nodes"], graph_info["edges"])
             graph = pydot.Dot(graph_type="digraph")
             for node in graph_info["nodes"]:
                 graph.add_node(pydot.Node(node))
