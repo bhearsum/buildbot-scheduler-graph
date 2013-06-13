@@ -22,7 +22,7 @@ class AggregatingScheduler(Scheduler):
         self.upstreamBuilders = upstreamBuilders
 
 
-class TestCombineObjects(unittest.TestCase):
+class TestParseSchedulers(unittest.TestCase):
     def testSimpleScheduler(self):
         s = [Scheduler("foo", ("bar", "baz"))]
         expected = {
@@ -268,6 +268,10 @@ class TestMergeGraphInfo(unittest.TestCase):
 
 
 class TestMergeNodes(unittest.TestCase):
+    def testNothingToMerge(self):
+        nodes = {"base", "foo", "bar"}
+        edges = {("base", "foo"), ("base", "bar")}
+        self.assertEquals(merge_nodes(nodes, edges), (nodes, edges))
     def testMergeMultipleDownstream(self):
         nodes = {"base", "foo 1/2", "foo 2/2"}
         edges = {("base", "foo 1/2"), ("base", "foo 2/2")}

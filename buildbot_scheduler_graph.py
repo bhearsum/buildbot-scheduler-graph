@@ -100,22 +100,18 @@ def merge_graph_info(graph_info):
     return {s:info for s,info in new_graph_info.iteritems() if info["root"]}
 
 
-def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
-    # A place to store the new sets of nodes and edges.
-    merged_nodes = set()
-    merged_edges = set()
+def merge_nodes(orig_nodes, orig_edges, merge_pattern=chunked_builder_pattern):
+    transformations = set()
     r = re.compile(merge_pattern)
     # Organize the nodes and edges to make them easier to work with
     node_groups = defaultdict(list)
     node_edges = defaultdict(list)
-    for n in nodes:
+    for n in orig_nodes:
         m = r.match(n)
         if m:
             basename = m.groupdict()["basename"]
             node_groups[basename].append(n)
-        else:
-            merged_nodes.add(n)
-    for e in edges:
+    for e in orig_edges:
         node_edges[e[0]].append(e)
         node_edges[e[1]].append(e)
 
@@ -123,7 +119,6 @@ def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
     for basename, nodes in node_groups.iteritems():
         # Can't merge a group with only one item!
         if len(nodes) < 2:
-            merged_nodes.update(nodes)
             continue
 
         mergeable = True
@@ -148,22 +143,22 @@ def merge_nodes(nodes, edges, merge_pattern=chunked_builder_pattern):
         # nodes, and add the deduplicated edges with the new node name.
         if mergeable:
             log.info("%s: Mergable!", basename)
-            merged_nodes.add(basename)
             for n in nodes:
-                for e in node_edges[n]:
-                    newedge = (e[0].replace(n, basename), e[1].replace(n, basename))
-                    log.debug("%s: Adding edge %s", basename, newedge)
-                    merged_edges.add(newedge)
-        # If the group isn't mergeable, just copy the original group data in.
-        else:
-            log.info("%s: Unmergeable", basename)
-            merged_nodes.update(nodes)
-            for n in nodes:
-                log.debug("%s: Adding edges %s" % (basename, node_edges[n]))
-                merged_edges.update(node_edges[n])
+                transformations.add((n, basename))
+
+    log.debug("Performing transformations: %s", transformations)
+    merged_nodes = set()
+    merged_edges = set()
+    for n in orig_nodes:
+        for before, after in transformations:
+            n = n.replace(before, after)
+        merged_nodes.add(n)
+    for e in orig_edges:
+        for before, after in transformations:
+            e = (e[0].replace(before, after), e[1].replace(before, after))
+        merged_edges.add(e)
 
     return merged_nodes, merged_edges
-
 
 def main():
     from argparse import ArgumentParser
