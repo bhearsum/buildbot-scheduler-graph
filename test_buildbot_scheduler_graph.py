@@ -39,7 +39,7 @@ class TestParseSchedulers(unittest.TestCase):
             Scheduler("base", ("upstream",)),
             Triggerable("foo", ("bar",)),
         ]
-        triggerables= {
+        triggerables = {
             "foo": ("upstream",),
         }
         expected = {
@@ -54,7 +54,23 @@ class TestParseSchedulers(unittest.TestCase):
                 "root": False,
             }
         }
-        self.assertEquals(parse_schedulers(s, triggerables), expected)
+        self.assertEquals(parse_schedulers(s, triggerables=triggerables), expected)
+
+    def testSendchangeUpstream(self):
+        s = [
+            Scheduler("foo", ("bar",)),
+        ]
+        sendchanges = {
+            "upstream": ("foo",),
+        }
+        expected = {
+            "foo scheduler": {
+                "nodes": set(("foo scheduler", "bar", "upstream")),
+                "edges": set((("foo scheduler", "bar"), ("upstream", "foo scheduler"))),
+                "root": True,
+            }
+        }
+        self.assertEquals(parse_schedulers(s, sendchanges=sendchanges), expected)
 
     def testDependentScheduler(self):
         s = [
