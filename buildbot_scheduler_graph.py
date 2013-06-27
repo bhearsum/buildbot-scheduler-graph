@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 chunked_builder_pattern = "(?P<basename>.*)[-_ ]\d+/\d+$"
 
-def parse_schedulers(schedulers, triggerables={}):
+def parse_schedulers(schedulers, triggerables={}, sendchanges={}):
     """Parses Scheduler data into a dict whose keys are the name of
        each Scheduler and whose values are a dict with the following keys:
         * nodes - A set of every node that needed to graph this Scheduler.
@@ -47,7 +47,7 @@ def parse_schedulers(schedulers, triggerables={}):
                 graph["nodes"].add(builder)
                 graph["edges"].add((builder, scheduler_name))
         # Connect Dependent Schedulers together
-        if getattr(s, "upstream_name", None):
+        elif getattr(s, "upstream_name", None):
             log.debug("%s: Connecting to Dependent Scheduler %s", scheduler_name, s.upstream_name)
             graph_info[scheduler_name]["root"] = False
             for upstream in schedulers:
@@ -57,10 +57,19 @@ def parse_schedulers(schedulers, triggerables={}):
                         graph["nodes"].add(builder)
                         graph["edges"].add((builder, scheduler_name))
         # Connect AggregatingScheduler Builders together
-        if getattr(s, "upstreamBuilders", None):
+        elif getattr(s, "upstreamBuilders", None):
             log.debug("%s: Adding Upstream Builders from Aggregating Scheduler", scheduler_name)
             graph_info[scheduler_name]["root"] = False
             for builder in s.upstreamBuilders:
+                log.info("%s: Adding Builder %s", scheduler_name, builder)
+                graph["nodes"].add(builder)
+                graph["edges"].add((builder, scheduler_name))
+        # If this is a plainer scheduler, it may still be triggered by a
+        # Sendchange.
+        else:
+            log.debug("%s: Looking for Sendchanges", scheduler_name)
+            for builder in sendchanges.get(s.name, []):
+                graph_info[scheduler_name]["root"] = False
                 log.info("%s: Adding Builder %s", scheduler_name, builder)
                 graph["nodes"].add(builder)
                 graph["edges"].add((builder, scheduler_name))
@@ -169,6 +178,7 @@ def main():
     parser.add_argument("output_dir", nargs=1)
     parser.add_argument("-v", "--verbose", dest="verbose", action="count", default=0)
     parser.add_argument("-t", "--triggerables", dest="triggerables")
+    parser.add_argument("-s", "--sendchanges", dest="sendchanges")
 
     args = parser.parse_args()
     master_cfg = os.path.abspath(args.master_cfg[0])
@@ -177,6 +187,10 @@ def main():
         triggerables = json.load(open(args.triggerables))
     else:
         triggerables = {}
+    if args.sendchanges:
+        sendchanges = json.load(open(args.sendchanges))
+    else:
+        sendchanges = {}
 
     if args.verbose == 1:
         log.setLevel(logging.INFO)
@@ -191,7 +205,7 @@ def main():
         sys.path.insert(0, "")
         cfg = load_source("cfg", master_cfg)
 
-        graph_info = parse_schedulers(cfg.c["schedulers"], triggerables=triggerables)
+        graph_info = parse_schedulers(cfg.c["schedulers"], triggerables=triggerables, sendchanges=sendchanges)
         for name, graph_info in merge_graph_info(graph_info).iteritems():
             graph_info["nodes"], graph_info["edges"] = merge_nodes(graph_info["nodes"], graph_info["edges"])
             graph = pydot.Dot(graph_type="digraph")

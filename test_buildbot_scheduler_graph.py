@@ -61,13 +61,13 @@ class TestParseSchedulers(unittest.TestCase):
             Scheduler("foo", ("bar",)),
         ]
         sendchanges = {
-            "upstream": ("foo",),
+            "foo": ("upstream",),
         }
         expected = {
             "foo scheduler": {
                 "nodes": set(("foo scheduler", "bar", "upstream")),
                 "edges": set((("foo scheduler", "bar"), ("upstream", "foo scheduler"))),
-                "root": True,
+                "root": False,
             }
         }
         self.assertEquals(parse_schedulers(s, sendchanges=sendchanges), expected)
