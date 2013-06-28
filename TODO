@@ -2,6 +2,7 @@
 * Make graph merging actually work
 * Add ChangeSources?
 * Map sendchange -> Schedulers (maybe need another dict like triggerables?)
+** Can probably be done through ChangeSources, as long as one SendChange cs is added for every root Scheduler with a unique branch.
 * Make it possible to process multiple configs
 * Other output formats (.dot and/or other parseable formats)
 * Make sure it works with Python 3
