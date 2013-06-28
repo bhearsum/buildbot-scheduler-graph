@@ -32,7 +32,7 @@ class TestParseSchedulers(unittest.TestCase):
                 "root": True,
             }
         }
-        self.assertEquals(parse_schedulers(s), expected)
+        self.assertEquals(parse_schedulers({}, s), expected)
 
     def testTriggerableScheduler(self):
         s = [
@@ -54,7 +54,7 @@ class TestParseSchedulers(unittest.TestCase):
                 "root": False,
             }
         }
-        self.assertEquals(parse_schedulers(s, triggerables=triggerables), expected)
+        self.assertEquals(parse_schedulers({}, s, triggerables=triggerables), expected)
 
     def testSendchangeUpstream(self):
         s = [
@@ -70,7 +70,7 @@ class TestParseSchedulers(unittest.TestCase):
                 "root": False,
             }
         }
-        self.assertEquals(parse_schedulers(s, sendchanges=sendchanges), expected)
+        self.assertEquals(parse_schedulers({}, s, sendchanges=sendchanges), expected)
 
     def testDependentScheduler(self):
         s = [
@@ -89,7 +89,7 @@ class TestParseSchedulers(unittest.TestCase):
                 "root": False,
             },
         }
-        self.assertEquals(parse_schedulers(s), expected)
+        self.assertEquals(parse_schedulers({}, s), expected)
 
     def testDependentSchedulerMultipleUpstreamBuilders(self):
         s = [
@@ -108,7 +108,7 @@ class TestParseSchedulers(unittest.TestCase):
                 "root": False,
             },
         }
-        self.assertEquals(parse_schedulers(s), expected)
+        self.assertEquals(parse_schedulers({}, s), expected)
 
     def testAggregatingScheduler(self):
         s = [
@@ -127,7 +127,7 @@ class TestParseSchedulers(unittest.TestCase):
                 "root": False,
             },
         }
-        self.assertEquals(parse_schedulers(s), expected)
+        self.assertEquals(parse_schedulers({}, s), expected)
 
     def testAggergatingSchedulerMultipleUpstreamBuilders(self):
         s = [
@@ -146,7 +146,7 @@ class TestParseSchedulers(unittest.TestCase):
                 "root": False,
             },
         }
-        self.assertEquals(parse_schedulers(s), expected)
+        self.assertEquals(parse_schedulers({}, s), expected)
 
 
 class TestMergeGraphInfo(unittest.TestCase):
