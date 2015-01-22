@@ -39,15 +39,8 @@ def parse_schedulers(schedulers, triggerables={}, sendchanges={}):
             log.info("%s: Adding Builder %s", scheduler_name, builder)
             graph["nodes"].add(builder)
             graph["edges"].add((scheduler_name, builder))
-        if getattr(s, "trigger", None):
-            log.debug("%s: Looking for Triggerable Builders", scheduler_name)
-            graph_info[scheduler_name]["root"] = False
-            for builder in triggerables.get(s.name, []):
-                log.info("%s: Adding Builder %s", scheduler_name, builder)
-                graph["nodes"].add(builder)
-                graph["edges"].add((builder, scheduler_name))
         # Connect Dependent Schedulers together
-        elif getattr(s, "upstream_name", None):
+        if getattr(s, "upstream_name", None):
             log.debug("%s: Connecting to Dependent Scheduler %s", scheduler_name, s.upstream_name)
             graph_info[scheduler_name]["root"] = False
             for upstream in schedulers:
@@ -61,6 +54,15 @@ def parse_schedulers(schedulers, triggerables={}, sendchanges={}):
             log.debug("%s: Adding Upstream Builders from Aggregating Scheduler", scheduler_name)
             graph_info[scheduler_name]["root"] = False
             for builder in s.upstreamBuilders:
+                log.info("%s: Adding Builder %s", scheduler_name, builder)
+                graph["nodes"].add(builder)
+                graph["edges"].add((builder, scheduler_name))
+        # Triggerables need to be identified after AggregatingScheduler because
+        # they share a "trigger" method.
+        elif getattr(s, "trigger", None):
+            log.debug("%s: Looking for Triggerable Builders", scheduler_name)
+            graph_info[scheduler_name]["root"] = False
+            for builder in triggerables.get(s.name, []):
                 log.info("%s: Adding Builder %s", scheduler_name, builder)
                 graph["nodes"].add(builder)
                 graph["edges"].add((builder, scheduler_name))

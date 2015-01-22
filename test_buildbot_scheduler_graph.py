@@ -21,6 +21,11 @@ class AggregatingScheduler(Scheduler):
         super(AggregatingScheduler, self).__init__(name, builderNames)
         self.upstreamBuilders = upstreamBuilders
 
+    def trigger(self):
+        """This method exists on the real AggregatingScheduler, and can make it
+        tricky to distinguish between it and a Triggerable"""
+        pass
+
 
 class TestParseSchedulers(unittest.TestCase):
     def testSimpleScheduler(self):
