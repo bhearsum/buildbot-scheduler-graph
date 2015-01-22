@@ -13,7 +13,11 @@ __version__ = "1.0"
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
 
-chunked_builder_pattern = "(?P<basename>.*)[-_ ]\d+/\d+$"
+grouped_builder_patterns = [
+    "(?P<basename>.*)[-_ ]\d+/\d+$",
+    "(?P<basename>.*-xulrunner)_.*(source|build)",
+    "(?P<basename>.*)-.*(?P<extra>_update_verify)",
+]
 
 def parse_schedulers(schedulers, triggerables={}, sendchanges={}):
     """Parses Scheduler data into a dict whose keys are the name of
@@ -111,7 +115,7 @@ def merge_graph_info(graph_info):
     return {s:info for s,info in new_graph_info.iteritems() if info["root"]}
 
 
-def merge_nodes(orig_nodes, orig_edges, merge_pattern=chunked_builder_pattern):
+def merge_nodes(orig_nodes, orig_edges, merge_pattern=None):
     transformations = set()
     r = re.compile(merge_pattern)
     # Organize the nodes and edges to make them easier to work with
@@ -120,7 +124,10 @@ def merge_nodes(orig_nodes, orig_edges, merge_pattern=chunked_builder_pattern):
     for n in orig_nodes:
         m = r.match(n)
         if m:
-            basename = m.groupdict()["basename"]
+            groups = m.groupdict()
+            basename = groups["basename"]
+            if "extra" in groups:
+                basename += groups["extra"]
             node_groups[basename].append(n)
     for e in orig_edges:
         node_edges[e[0]].append(e)
@@ -211,8 +218,9 @@ def main():
 
         graph_info = parse_schedulers(cfg.c["schedulers"], triggerables=triggerables, sendchanges=sendchanges)
         for name, graph_info in merge_graph_info(graph_info).iteritems():
-            graph_info["nodes"], graph_info["edges"] = merge_nodes(graph_info["nodes"], graph_info["edges"])
-            graph = pydot.Dot(graph_type="digraph")
+            for p in grouped_builder_patterns:
+                graph_info["nodes"], graph_info["edges"] = merge_nodes(graph_info["nodes"], graph_info["edges"], p)
+            graph = pydot.Dot(graph_type="digraph", layout="dot")
             for node in graph_info["nodes"]:
                 graph.add_node(pydot.Node(node))
             for edge in graph_info["edges"]:
