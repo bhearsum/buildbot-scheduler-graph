@@ -5,3 +5,4 @@
 * Make it possible to process multiple configs
 * Other output formats (.dot and/or other parseable formats)
 * Make sure it works with Python 3
+* Combine multiple nodes with the same inputs+outputs into single nodes
