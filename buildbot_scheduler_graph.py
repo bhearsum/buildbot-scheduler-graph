@@ -181,10 +181,12 @@ def main():
     parser.add_argument("-v", "--verbose", dest="verbose", action="count", default=0)
     parser.add_argument("-t", "--triggerables", dest="triggerables")
     parser.add_argument("-s", "--sendchanges", dest="sendchanges")
+    parser.add_argument("--dots", dest="output_dots", action="store_true", default=False)
 
     args = parser.parse_args()
     master_cfg = os.path.abspath(args.master_cfg[0])
     output_dir = args.output_dir[0]
+    output_dots = args.output_dots
     if args.triggerables:
         triggerables = json.load(open(args.triggerables))
     else:
@@ -216,6 +218,8 @@ def main():
             for edge in graph_info["edges"]:
                 graph.add_edge(pydot.Edge(*edge))
             graph.write_png(os.path.join(output_dir, "%s.png" % name))
+            if output_dots:
+                graph.write_dot(os.path.join(output_dir, "%s.dot" % name))
 
     finally:
         os.chdir(curdir)
