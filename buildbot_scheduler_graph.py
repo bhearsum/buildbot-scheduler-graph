@@ -16,7 +16,6 @@ log = logging.getLogger(__name__)
 grouped_builder_patterns = [
     "(?P<basename>.*)[-_ ]\d+/\d+$",
     "(?P<basename>.*-xulrunner)_.*(source|build)",
-    "(?P<basename>.*)-.*(?P<extra>_update_verify)",
 ]
 
 def parse_schedulers(schedulers, triggerables={}, sendchanges={}):
