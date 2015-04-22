@@ -15,6 +15,7 @@ log = logging.getLogger(__name__)
 
 grouped_builder_patterns = [
     "(?P<basename>.*)[-_ ]\d+/\d+$",
+    "(?P<basename>.*)[-_ ]\d+$",
     "(?P<basename>.*-xulrunner)_.*(source|build)",
 ]
 
